@@ -1,6 +1,6 @@
 # cyborg-launcher
 
-Cyborg launcher is a launcher with built-in X server and Termux integration *
+Cyborg launcher is an Android launcher with built-in X server and Termux integration *
 
 * Currently under development
 
