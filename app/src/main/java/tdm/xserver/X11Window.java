@@ -1,5 +1,6 @@
 package tdm.xserver;
 
+import android.content.Intent;
 import android.util.Log;
 
 import android.graphics.Bitmap;
@@ -9,6 +10,7 @@ import android.os.Message;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.chedim.android.xserver.HomeActivity;
 import com.chedim.android.xserver.X11WindowActivity;
 
 import java.lang.Thread;
@@ -18,14 +20,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-class X11Window extends X11Drawable
+public class X11Window extends X11Drawable
 {
+    private static final String TAG = X11Window.class.getName();
+    public static final Map<Integer, UIHandler> handlers = new ConcurrentHashMap<>();
     static final int EVENT_EXPOSURE     = 0x00008000;
 
     static final short COPY_FROM_PARENT = 0;
     static final short INPUT_OUTPUT     = 1;
     static final short INPUT_ONLY       = 2;
-    static final ConcurrentHashMap<Integer, X11Window> windows = new ConcurrentHashMap<>();
+    public static final ConcurrentHashMap<Integer, X11Window> windows = new ConcurrentHashMap<>();
 
     static void create(X11Client c, X11RequestMessage msg) throws X11Error {
         int id = msg.mData.deqInt();
@@ -51,7 +55,6 @@ class X11Window extends X11Drawable
     short                       mDoNotPropagateMask;
     X11Colormap                 mColormap;
     X11Cursor                   mCursor;
-    UIHandler mHandler;
 
     Map<Integer,X11Property>    mProperties;
 
@@ -91,7 +94,6 @@ class X11Window extends X11Drawable
     }
 
     void createRoot(X11Client c, short w, short h, byte d, X11Visual v) throws X11Error {
-        mHandler = X11Server.getUiHandler(X11Resource.ID_ROOT_WINDOW);
         mDepth = d;
         mRect = new X11Rect((short)0, (short)0, w, h);
         mBitmap = Bitmap.createBitmap(mRect.w, mRect.h, Bitmap.Config.ARGB_8888);
@@ -112,6 +114,11 @@ class X11Window extends X11Drawable
         while (mView == null) { Thread.yield(); }
         mView.mClient = c;
         c.mServer.mInputFocus = this;
+    }
+
+    void repaint() {
+        Log.i(TAG, "Repainting window#" + mId + " (Root? " + mIsRoot + ")");
+        postRender();
     }
 
     void initBackground() {
@@ -143,7 +150,6 @@ class X11Window extends X11Drawable
 
         mBitmap = Bitmap.createBitmap(mRect.w, mRect.h, Bitmap.Config.ARGB_8888);
         mCanvas = new Canvas(mBitmap);
-        mHandler = X11Server.getUiHandler(mId);
 
         mWndClass = msg.mData.deqShort();
         int vid = msg.mData.deqInt();
@@ -184,7 +190,7 @@ class X11Window extends X11Drawable
 
         doChangeAttributes(c, msg.mData);
 
-        updateHandler(X11Server.getUiHandler(X11Resource.ID_ROOT_WINDOW));
+        sendViewMessage(UIHandler.MSG_VIEW_CREATE);
 
         while (mView == null) { Thread.yield(); }
         mView.mClient = c;
@@ -799,17 +805,19 @@ class X11Window extends X11Drawable
         mCanvas.restore();
     }
 
-    void updateHandler(UIHandler handler) {
-        if (mHandler != null) {
-            sendViewMessage(UIHandler.MSG_VIEW_REMOVE);
+    UIHandler getHandler() {
+        if (handlers.containsKey(mId)) {
+            return handlers.get(mId);
         }
-        mHandler = handler;
-        sendViewMessage(UIHandler.MSG_VIEW_CREATE);
+        return handlers.get(X11Window.ID_ROOT_WINDOW);
     }
 
-    private void sendViewMessage(int func) {
-        Message msg = Message.obtain(mHandler, func, this);
-        mHandler.sendMessage(msg);
+    public void setHandler(UIHandler handler) {
+       handlers.put(mId, handler);
     }
 
+    public void sendViewMessage(int func) {
+        Message msg = Message.obtain(getHandler(), func, this);
+        getHandler().sendMessage(msg);
+    }
 }

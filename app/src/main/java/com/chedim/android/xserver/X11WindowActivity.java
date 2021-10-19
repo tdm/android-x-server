@@ -32,6 +32,5 @@ public class X11WindowActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        X11Server.registerUiHandler(windowId, new UIHandler(this, rootView));
     }
 }

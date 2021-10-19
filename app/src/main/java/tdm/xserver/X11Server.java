@@ -13,6 +13,7 @@ import android.util.Log;
 
 import android.content.Context;
 import android.view.Display;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 
 import android.util.DisplayMetrics;
@@ -215,6 +216,7 @@ public class X11Server extends Service
         short namelen = msg.mData.deqShort();
         msg.mData.deqSkip(2);
         String name = msg.mData.deqString(namelen);
+        Log.i(TAG, "InternAtom: " + name);
 
         int id = X11Atom.NONE;
         boolean created = false;
@@ -499,15 +501,8 @@ public class X11Server extends Service
         return null;
     }
 
-    public static void registerUiHandler(int w, UIHandler handler) {
-        mUIHandlers.put(w, handler);
-        if (X11Window.windows.containsKey(w)) {
-            X11Window.windows.get(w).updateHandler(handler);
-        }
-    }
-
-    public static UIHandler getUiHandler(int X11Window) {
-        return mUIHandlers.get(X11Window);
+    public static UIHandler getUiHandler(int w) {
+        return mUIHandlers.get(w);
     }
 
     public static void launchActivity(int X11Window) {

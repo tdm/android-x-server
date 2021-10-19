@@ -103,7 +103,8 @@ class X11Client extends Thread implements X11ProtocolHandler
     }
 
     X11Colormap getColormap(int id) throws X11Error {
-        return (X11Colormap)getResource(id, X11Resource.COLORMAP);
+        //return (X11Colormap) getResource(id, X11Resource.COLORMAP);
+        return X11Colormap.ROOT;
     }
 
     X11Cursor getCursor(int id) throws X11Error {
@@ -286,6 +287,9 @@ class X11Client extends Thread implements X11ProtocolHandler
             case  73: getDrawable(msg.mData.deqInt()).handleGetImage(this, msg); break;
             case  76: getDrawable(msg.mData.deqInt()).handleImageText8(this, msg); break;
             case  78: X11Colormap.create(this, msg); break;
+            case  84: X11Colormap.handleAllocColor(this, msg); break;
+            case  85: X11Colormap.handleAllocNamedColor(this, msg); break;
+            case  91: X11Colormap.handleQueryColors(this, msg); break;
             case  92: getColormap(msg.mData.deqInt()).handleLookupColor(this, msg); break;
             case  93: X11PixmapCursor.create(this, msg); break;
             case  94: X11GlyphCursor.create(this, msg); break;

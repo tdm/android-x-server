@@ -1,18 +1,12 @@
 package tdm.xserver;
 
-import android.util.Log;
-
 import android.content.Context;
-
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Handler;
 import android.os.Message;
-
-import android.graphics.drawable.BitmapDrawable;
-
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Gravity;
-
 import android.widget.RelativeLayout;
 
 public class UIHandler extends Handler
@@ -25,17 +19,19 @@ public class UIHandler extends Handler
     public static final int MSG_VIEW_SET_BACKGROUND_COLOR = 0x1011;
     public static final int MSG_VIEW_SET_BACKGROUND_BITMAP = 0x1012;
     public static final int MSG_VIEW_INVALIDATE  = 0x1020;
+    public static final int MSG_VIEW_RECREATE_ROOT = 0x1021;
+    public static final int MSG_VIEW_RECREATE = 0x1022;
 
-    Context                     mContext;
+    Integer                     mWindowId;
     ViewGroup                   mViewGroup;
 
-    public UIHandler(Context ctx, ViewGroup vg) {
-        mContext = ctx;
+    public UIHandler(Integer w, ViewGroup vg) {
+        mWindowId = w;
         mViewGroup = vg;
     }
 
     public Context getContext() {
-        return mContext;
+        return mViewGroup.getContext();
     }
 
     public void handleMessage(Message msg) {
@@ -44,26 +40,11 @@ public class UIHandler extends Handler
         switch (msg.what) {
         case MSG_VIEW_CREATE_ROOT:
             w = (X11Window)msg.obj;
-            w.mView = new ClientView(mContext, w);
-            lp = new RelativeLayout.LayoutParams(w.mRect.x, w.mRect.y);
-            mViewGroup.addView(w.mView, lp);
-            w.mView.setFocusable(true);
-            w.mView.setFocusableInTouchMode(true);
-            w.mView.setVisibility(View.VISIBLE);
-            Log.d("X", "UI: w="+w.mId+": Attached ClientView to root window");
+            viewCreateRoot(w);
             break;
         case MSG_VIEW_CREATE:
             w = (X11Window)msg.obj;
-            w.mView = new ClientView(mContext, w);
-            lp = new RelativeLayout.LayoutParams(w.mRect.w, w.mRect.h);
-            lp.addRule(RelativeLayout.ALIGN_PARENT_LEFT, -1);
-            lp.addRule(RelativeLayout.ALIGN_PARENT_TOP, -1);
-            lp.setMargins(w.mRect.x, w.mRect.y, 0, 0);
-            mViewGroup.addView(w.mView, lp);
-            w.mView.setFocusable(true);
-            w.mView.setFocusableInTouchMode(true);
-            w.mView.setVisibility(View.INVISIBLE);
-            Log.d("X", "UI: w="+w.mId+": Attached ClientView to window at x="+w.mRect.x+", y=" + w.mRect.y);
+            viewCreate(w);
             break;
         case MSG_VIEW_REMOVE:
             w = (X11Window)msg.obj;
@@ -96,13 +77,67 @@ public class UIHandler extends Handler
         case MSG_VIEW_SET_BACKGROUND_BITMAP:
             w = (X11Window)msg.obj;
             w.mView.setBackground(
-                    new BitmapDrawable(mContext.getResources(),
+                    new BitmapDrawable(getContext().getResources(),
                             w.mBgPixmap.mBitmap));
             break;
         case MSG_VIEW_INVALIDATE:
             w = (X11Window)msg.obj;
             w.mView.invalidate();
             break;
+        case MSG_VIEW_RECREATE_ROOT:
+            w = (X11Window) msg.obj;
+            viewCreateRoot(w);
+            recreateViews(w);
+            break;
+        case MSG_VIEW_RECREATE:
+            w = (X11Window) msg.obj;
+            viewCreate(w);
+            recreateViews(w);
+            break;
+        }
+    }
+
+    protected void viewCreateRoot(X11Window w) {
+        w.mView = new ClientView(getContext(), w);
+        RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(w.mRect.x, w.mRect.y);
+        mViewGroup.addView(w.mView, lp);
+        w.mView.setFocusable(true);
+        w.mView.setFocusableInTouchMode(true);
+        w.mView.setVisibility(View.VISIBLE);
+        Log.d("X", "UI: w="+w.mId+": Attached ClientView to root window");
+    }
+
+    protected void viewCreate(X11Window w) {
+        w.mView = new ClientView(getContext(), w);
+        RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(w.mRect.w, w.mRect.h);
+        lp.addRule(RelativeLayout.ALIGN_PARENT_LEFT, -1);
+        lp.addRule(RelativeLayout.ALIGN_PARENT_TOP, -1);
+        lp.setMargins(w.mRect.x, w.mRect.y, 0, 0);
+        mViewGroup.addView(w.mView, lp);
+        w.mView.setFocusable(true);
+        w.mView.setFocusableInTouchMode(true);
+        w.mView.setVisibility(View.INVISIBLE);
+        Log.d("X", "UI: w="+w.mId+": Attached ClientView to window at x="+w.mRect.x+", y=" + w.mRect.y);
+    }
+
+    protected void recreateViews(X11Window window) {
+        window.repaint();
+        for (X11Window child: window.mChildren) {
+            UIHandler handler = child.getHandler();
+            handler.handleMessage(Message.obtain(handler, MSG_VIEW_RECREATE, child));
+        }
+    }
+
+    public void updateViewGroup(ViewGroup newViewGroup) {
+        mViewGroup = newViewGroup;
+        X11Window window = X11Window.windows.get(mWindowId);
+        if (window != null) {
+            if (window.mIsRoot) {
+                viewCreateRoot(window);
+            } else {
+                viewCreate(window);
+            }
+            recreateViews(window);
         }
     }
 }

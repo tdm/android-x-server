@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.provider.Settings;
 import android.view.MotionEvent;
 import android.view.View;
@@ -19,20 +20,30 @@ import android.widget.RelativeLayout;
 import tdm.xserver.UIHandler;
 import tdm.xserver.X11Resource;
 import tdm.xserver.X11Server;
+import tdm.xserver.X11Window;
 
 /**
  * Launcher activity that starts all services
  */
 public class HomeActivity extends AppCompatActivity {
+    private static ViewGroup rootView;
+    private static UIHandler mUiHandler;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        ViewGroup rootView = new RelativeLayout(this);
-        setContentView(rootView);
-
-        X11Server.registerUiHandler(X11Resource.ID_ROOT_WINDOW, new UIHandler(this, rootView));
         startForegroundService(new Intent(this, X11Server.class));
+
+        rootView = new RelativeLayout(this);
+        setContentView(rootView);
+        mUiHandler = new UIHandler(X11Window.ID_ROOT_WINDOW, rootView);
+        X11Window.handlers.put(X11Window.ID_ROOT_WINDOW, mUiHandler);
+        mUiHandler.updateViewGroup(rootView);
+
+    }
+
+    public static ViewGroup getRootView() {
+        return rootView;
     }
 
     @Override

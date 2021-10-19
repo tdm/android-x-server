@@ -142,6 +142,7 @@ class X11RequestMessage extends X11Message
     byte                mRequestType;
     byte                mHeaderData;
     boolean             mBigReq;
+    int               mReqLen;
 
     X11RequestMessage(ByteOrder endian, boolean bigreq) {
         super(endian);
@@ -151,19 +152,19 @@ class X11RequestMessage extends X11Message
     void read(ByteQueue q) throws Exception {
         mRequestType = q.deqByte();
         mHeaderData = q.deqByte();
-        short reqlen = q.deqShort();
-        if (reqlen == 0) {
+        mReqLen = q.deqShort();
+        if (mReqLen == 0) {
             if (!mBigReq) {
                 throw new Exception("X11 protocol error: invalid message length");
             }
-            int bigreqlen = q.deqInt();
-            if (bigreqlen < 2) {
+            mReqLen = q.deqInt();
+            if (mReqLen < 2) {
                 throw new Exception("X11 protocol error: invalid message length");
             }
-            mData = q.deqData(bigreqlen*4-8);
+            mData = q.deqData(mReqLen*4-8);
         }
         else {
-            mData = q.deqData((int)reqlen*4-4); //XXX: cast needed and functional?
+            mData = q.deqData((int)mReqLen*4-4); //XXX: cast needed and functional?
         }
     }
     void write(ByteQueue q) {
