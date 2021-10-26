@@ -52,7 +52,10 @@ class X11Font extends X11Fontable
     }
 
     X11CharInfo getCharInfo(char ch) {
-        return mData.mCharInfos.get(ch);
+        if (ch < mData.mCharInfos.size()) {
+            return mData.mCharInfos.get(ch);
+        }
+        return null;
     }
 
     Bitmap getCharImage(char ch, int fore, int back) {

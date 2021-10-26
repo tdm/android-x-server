@@ -73,7 +73,7 @@ class X11Colormap extends X11Resource
             }
         }
         catch (Exception e) {
-            Log.e("X", "Failed to init RGB data from dir");
+            Log.e("X", "Failed to init RGB data from the system");
             e.printStackTrace();
         }
     }

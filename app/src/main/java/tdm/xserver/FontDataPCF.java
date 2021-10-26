@@ -45,6 +45,7 @@ class FontDataPCF extends FontData
     static final int PCF_BYTE_MASK              = (1<<2); // If set then Most Sig Byte First
     static final int PCF_BIT_MASK               = (1<<3); // If set then Most Sig Bit First
     static final int PCF_SCAN_UNIT_MASK         = (3<<4); // See the bitmap table for explanation
+    private static final String TAG = FontDataPCF.class.getName();
 
     class pcf_toc_entry
     {
@@ -126,6 +127,7 @@ class FontDataPCF extends FontData
             while ((s = br.readLine()) != null) {
                 String[] fields = s.split(" ", 2);
                 String pathname = "fonts/" + fields[0];
+                Log.i(TAG, "Loading PCF font: " + pathname);
                 FontDataPCF pcf = new FontDataPCF(fields[1], PATH_TYPE_ASSET, pathname);
                 server.registerFont(pcf);
             }
@@ -136,11 +138,12 @@ class FontDataPCF extends FontData
                     continue;
                 }
                 String[] fields = s.split("[ \t]{1,}", 2);
+                Log.i(TAG, "Loading PCF font alias: " + fields);
                 server.registerFontAlias(fields[0].toLowerCase(), fields[1].toLowerCase());
             }
         }
         catch (Exception e) {
-            Log.e("X", "Failed to init PCF fonts from assets");
+            Log.e("X", "Failed to init PCF fonts from assets", e);
         }
 
         try {

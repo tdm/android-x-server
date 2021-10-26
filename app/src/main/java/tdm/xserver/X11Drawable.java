@@ -201,6 +201,8 @@ abstract class X11Drawable extends X11Resource
         byte left_pad = msg.mData.deqByte();
         byte depth = msg.mData.deqByte();
         msg.mData.deqSkip(2);
+        int bitLength = rect.w * rect.h * depth;
+        byte[] buf = msg.mData.deqArray(MathX.divceil(bitLength, 8));
 
         if (fmt == 0 /* Bitmap */) {
             if (depth != (byte)1) {
@@ -223,10 +225,10 @@ abstract class X11Drawable extends X11Resource
 
         switch (fmt) {
         case 1 /* XYPixmap */:
-            bmp = f.decodeImageXY(rect.w, rect.h, msg.mData);
+            bmp = f.decodeImageXY(rect.w, rect.h, buf);
             break;
         case 2 /* ZPixmap */ :
-            bmp = f.decodeImageZ(rect.w, rect.h, msg.mData);
+            bmp = f.decodeImageZ(rect.w, rect.h, buf);
             break;
         default:
             throw new X11Error(X11Error.VALUE, fmt);
@@ -318,6 +320,52 @@ abstract class X11Drawable extends X11Resource
         postRender(r);
     }
 
+    X11Rect drawText(short x, short y, X11GContext ctx, String text) {
+        X11Font font = ctx.mFont;
+        short w = 0, h = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            X11CharInfo info = font.getCharInfo(ch);
+            if (info == null) {
+                ch = 0;
+                info = font.getCharInfo(ch);
+                if (info == null) {
+                    continue;
+                }
+            }
+            Bitmap bmp = font.getCharImage(ch, ctx.mForePixel, ctx.mBackPixel);
+            if (bmp != null) {
+                mCanvas.drawBitmap(bmp, x + w, y - bmp.getHeight(), null);
+            }
+            w += info.character_width;
+            h = (short) bmp.getHeight();
+        }
+
+        X11Rect r = new X11Rect(x, y, w, h);
+        postRender(r);
+        return r;
+    }
+
     void postRender(X11Rect r) {}
     void postRender() {}
+
+    public void handlePolyText8(X11Client c, X11RequestMessage msg) throws X11Error {
+       X11GContext gc = c.getGContext(msg.mData.deqInt());
+       short x = msg.mData.deqShort(),
+               y = msg.mData.deqShort();
+
+       while(msg.mData.remain() > 1) {
+          int strLen = Byte.toUnsignedInt(msg.mData.deqByte());
+          if (strLen == 255) {
+              // font change
+              int font = msg.mData.deqInt();
+              gc.mFont = c.getFont(font);
+          } else {
+              x += Byte.toUnsignedInt(msg.mData.deqByte());
+              String text = msg.mData.deqString(strLen);
+              X11Rect box = drawText(x, y, gc, text);
+              x += box.w;
+          }
+       }
+    }
 }

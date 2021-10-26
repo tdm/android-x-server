@@ -349,10 +349,8 @@ public class X11Server extends Service
         try {
             data.loadMetadata(this);
             data.loadGlyphs(this);
-        }
-        catch (Exception e) {
-            Log.e("X", "OpenFont: failed to load metadata");
-            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e("X", "OpenFont: failed to load metadata", e);
             throw new X11Error(X11Error.IMPLEMENTATION, 0);
         }
         X11Font font = new X11Font(fid, data);

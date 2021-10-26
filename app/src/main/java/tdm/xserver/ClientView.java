@@ -20,6 +20,7 @@ class ClientView extends View {
   ClientView(Context ctx, X11Window w) {
     super(ctx);
     mWindow = w;
+    mClient = w.mClient;
     Log.i(TAG, "Creating view " + w.mId + " in context " + ctx);
   }
 
@@ -41,7 +42,9 @@ class ClientView extends View {
 
   public void onDraw(Canvas canvas) {
     Log.d("X", "ClientView#" + mWindow.mId + ".onDraw");
-    canvas.drawBitmap(mWindow.mBitmap, 0, 0, null);
+    if (mWindow.mBitmap != null) {
+      canvas.drawBitmap(mWindow.mBitmap, 0, 0, null);
+    }
   }
 
   public boolean onGenericMotionEvent(MotionEvent event) {

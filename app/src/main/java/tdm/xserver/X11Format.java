@@ -16,18 +16,13 @@ abstract class X11Format
 
     protected void decodePlane(short w, short h, byte[] buf, byte plane, Bitmap bmp) {
         int plane_shift = (mDepth - plane);
-        int bytes_per_row = MathX.divceil(w, 8);
-        int bytes_per_plane = h * bytes_per_row;
         short y, x;
-        int plane_off, y_off, x_off;
         byte val;
 
-        plane_off = plane * bytes_per_plane;
+        int plane_off = plane * h * w;
         for (y = 0; y < h; ++y) {
-            y_off = y * bytes_per_row;
             for (x = 0; x < w; ++x) {
-                x_off = x/8;
-                val = buf[plane_off + y_off + x_off];
+                val = buf[(plane_off + x + w) * mDepth / 8];
                 int shift = (7 - (x%8));
 
                 int tmp = bmp.getPixel(x, y);
@@ -37,8 +32,7 @@ abstract class X11Format
         }
     }
 
-    Bitmap decodeImageXY(short w, short h, ByteQueue q) {
-        byte[] buf = q.deqArray(w*h*mBPP/8); //XXX
+    Bitmap decodeImageXY(short w, short h, byte[] buf) {
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         byte plane;
         for (plane = 0; plane < mBPP; ++plane) {
@@ -47,7 +41,7 @@ abstract class X11Format
         return bmp;
     }
 
-    abstract Bitmap decodeImageZ(short w, short h, ByteQueue q);
+    abstract Bitmap decodeImageZ(short w, short h, byte[] buf);
 
     protected void encodePlane(X11Rect r, Bitmap bmp, byte plane, byte[] buf) {
         int plane_shift = (mDepth - plane);
@@ -90,9 +84,7 @@ class X11Format_1 extends X11Format
 {
     X11Format_1() { super((byte)1, (byte)1, (byte)8); }
 
-    Bitmap decodeImageZ(short w, short h, ByteQueue q) {
-        int bytes_per_row = MathX.divceil(w, 8);
-        byte[] buf = q.deqArray(bytes_per_row*h);
+    Bitmap decodeImageZ(short w, short h, byte[] buf) {
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         decodePlane(w, h, buf, (byte)0, bmp);
         return bmp;
@@ -112,9 +104,8 @@ class X11Format_4 extends X11Format
 {
     X11Format_4() { super((byte)4, (byte)4, (byte)8); }
 
-    Bitmap decodeImageZ(short w, short h, ByteQueue q) {
+    Bitmap decodeImageZ(short w, short h, byte[] buf) {
         int bytes_per_row = MathX.divceil(w, 2);
-        byte[] buf = q.deqArray(bytes_per_row*h);
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         short y, x;
         int y_off, x_off;
@@ -153,8 +144,7 @@ class X11Format_8 extends X11Format
 {
     X11Format_8() { super((byte)8, (byte)8, (byte)8); }
 
-    Bitmap decodeImageZ(short w, short h, ByteQueue q) {
-        byte[] buf = q.deqArray(w*h);
+    Bitmap decodeImageZ(short w, short h, byte[] buf) {
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         short y, x;
         int y_off, x_off;
@@ -193,9 +183,8 @@ class X11Format_16 extends X11Format
 {
     X11Format_16() { super((byte)16, (byte)16, (byte)16); }
 
-    Bitmap decodeImageZ(short w, short h, ByteQueue q) {
+    Bitmap decodeImageZ(short w, short h, byte[] buf) {
         int bytes_per_row = w*2;
-        byte[] buf = q.deqArray(bytes_per_row*h);
         //XXX: This is wrong.  Use RGB_565 and copyPixelsFromBuffer?
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         short y, x;
@@ -238,21 +227,19 @@ class X11Format_24 extends X11Format
 {
     X11Format_24() { super((byte)24, (byte)32, (byte)32); }
 
-    Bitmap decodeImageZ(short w, short h, ByteQueue q) {
+    Bitmap decodeImageZ(short w, short h, byte[] buf) {
         int bytes_per_row = w*4;
-        byte[] buf = q.deqArray(bytes_per_row*h);
         //XXX: Use copyPixelsFromBuffer?
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        short y, x;
-        int y_off, x_off;
+        short x, y;
+        int base;
         int val;
         for (y = 0; y < h; ++y) {
-            y_off = y * bytes_per_row;
             for (x = 0; x < w; ++x) {
-                x_off = x*4;
-                val = (buf[y_off + x_off + 1] << 16) |
-                      (buf[y_off + x_off + 2] <<  8) |
-                      buf[y_off + x_off + 3];
+                base = bytes_per_row * y + x*4;
+                val = (buf[base + 1] << 16) |
+                      (buf[base + 2] <<  8) |
+                      buf[base + 3];
                 bmp.setPixel(x, y, 0xff000000 | val);
             }
         }
@@ -286,9 +273,8 @@ class X11Format_32 extends X11Format
 {
     X11Format_32() { super((byte)32, (byte)32, (byte)32); }
 
-    Bitmap decodeImageZ(short w, short h, ByteQueue q) {
+    Bitmap decodeImageZ(short w, short h, byte[] buf) {
         int bytes_per_row = w*4;
-        byte[] buf = q.deqArray(bytes_per_row*h);
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         short y, x;
         int y_off, x_off;

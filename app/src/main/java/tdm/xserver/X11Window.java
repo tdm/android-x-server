@@ -69,6 +69,7 @@ public class X11Window extends X11Drawable
 
     X11WindowActivity           mActivity;
     View                        mLayout;
+    X11Client                   mClient;
 
     X11Window(int id) {
         super(X11Resource.WINDOW, id);
@@ -137,6 +138,7 @@ public class X11Window extends X11Drawable
     }
 
     void handleCreate(X11Client c, X11RequestMessage msg) throws X11Error {
+        mClient = c;
         mDepth = msg.headerData();
         mParent = c.getWindow(msg.mData.deqInt());
         mParent.mChildren.add(this);
@@ -329,6 +331,7 @@ public class X11Window extends X11Drawable
             mProperties.put(name, prop);
         }
 
+        Log.i(TAG, "Setting property " + name + " on " + this);
         switch (mode) {
         case 0: prop.setValue(data.getBytes()); break;
         case 1: prop.appendValue(data.getBytes()); break;
@@ -485,7 +488,9 @@ public class X11Window extends X11Drawable
     }
 
     void postRender() {
-        mView.postInvalidate();
+        if (mView != null) {
+            mView.postInvalidate();
+        }
     }
 
     X11Point absolutePosition(X11Client c) throws X11Error {

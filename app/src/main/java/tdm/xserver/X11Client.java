@@ -57,6 +57,7 @@ class X11Client extends Thread implements X11ProtocolHandler
             r.destroy();
         }
 
+        Log.i(TAG, "Client closed: " + this);
         mServer.clientClosed(this);
         mServer = null;
     }
@@ -145,15 +146,17 @@ class X11Client extends Thread implements X11ProtocolHandler
             close();
         }
     }
-    void send(X11EventMessage msg) {
-        msg.seqno(mSeqNo);
-        Log.d(TAG, "Send event: seqno=" + mSeqNo + ", name=" + msg.name());
-        try {
-            mProt.send(msg);
-        }
-        catch (IOException e) {
-            close();
-        }
+    void send(final X11EventMessage msg) {
+        new Thread(() -> {
+            msg.seqno(mSeqNo);
+            Log.d(TAG, "Send event: seqno=" + mSeqNo + ", name=" + msg.name());
+            try {
+                mProt.send(msg);
+            }
+            catch (IOException e) {
+                close();
+            }
+        });
     }
     void send(X11ErrorMessage msg) {
         msg.seqno(mSeqNo);
@@ -285,6 +288,7 @@ class X11Client extends Thread implements X11ProtocolHandler
             case  71: getDrawable(msg.mData.deqInt()).handlePolyFillArc(this, msg); break;
             case  72: getDrawable(msg.mData.deqInt()).handlePutImage(this, msg); break;
             case  73: getDrawable(msg.mData.deqInt()).handleGetImage(this, msg); break;
+            case  74: getDrawable(msg.mData.deqInt()).handlePolyText8(this, msg); break;
             case  76: getDrawable(msg.mData.deqInt()).handleImageText8(this, msg); break;
             case  78: X11Colormap.create(this, msg); break;
             case  84: X11Colormap.handleAllocColor(this, msg); break;

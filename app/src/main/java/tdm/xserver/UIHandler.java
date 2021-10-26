@@ -2,6 +2,7 @@ package tdm.xserver;
 
 import android.content.Context;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -21,6 +22,7 @@ public class UIHandler extends Handler
     public static final int MSG_VIEW_INVALIDATE  = 0x1020;
     public static final int MSG_VIEW_RECREATE_ROOT = 0x1021;
     public static final int MSG_VIEW_RECREATE = 0x1022;
+    private static final String TAG = UIHandler.class.getName();
 
     Integer                     mWindowId;
     ViewGroup                   mViewGroup;
@@ -108,6 +110,9 @@ public class UIHandler extends Handler
     }
 
     protected void viewCreate(X11Window w) {
+        if (w.mRect == null) {
+            return;
+        }
         w.mView = new ClientView(getContext(), w);
         RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(w.mRect.w, w.mRect.h);
         lp.addRule(RelativeLayout.ALIGN_PARENT_LEFT, -1);
@@ -121,18 +126,27 @@ public class UIHandler extends Handler
     }
 
     protected void recreateViews(X11Window window) {
+        Log.i(TAG, "Recreating " + window);
         window.repaint();
         for (X11Window child: window.mChildren) {
             UIHandler handler = child.getHandler();
-            handler.handleMessage(Message.obtain(handler, MSG_VIEW_RECREATE, child));
+            if (handler != null && handler != this && child.mRect != null) {
+                Log.i(TAG, "Delegating re-creation to " + handler);
+                handler.handleMessage(Message.obtain(handler, MSG_VIEW_RECREATE, child));
+            } else {
+                handler.viewCreate(child);
+                child.repaint();
+            }
         }
     }
 
     public void updateViewGroup(ViewGroup newViewGroup) {
         mViewGroup = newViewGroup;
+        Log.i(TAG, "Updating view group to " + newViewGroup);
         X11Window window = X11Window.windows.get(mWindowId);
         if (window != null) {
             if (window.mIsRoot) {
+                Log.i(TAG, "Updating ROOT view group to " + newViewGroup);
                 viewCreateRoot(window);
             } else {
                 viewCreate(window);
